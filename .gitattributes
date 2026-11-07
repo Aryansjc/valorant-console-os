@@ -1,0 +1,17 @@
+# Normalize text files in the repository.
+* text=auto eol=lf
+
+# Windows payloads must keep CRLF endings when checked out.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary artifacts
+*.cab binary
+*.iso binary
+*.esd binary
+*.wim binary
+*.efi binary
+*.vhd binary
+*.vhdx binary
+*.img binary

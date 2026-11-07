@@ -1,0 +1,21 @@
+# Generated build artifacts (disposable: WIM, extracted ISO, logs, manifests)
+/build/
+
+# Source installation media (large; never commit)
+/*.iso
+/*.esd
+/*.wim
+/*.vhd
+/*.vhdx
+/*.img
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
