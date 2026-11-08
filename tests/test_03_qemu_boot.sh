@@ -198,6 +198,7 @@ unmount_loop_mounts() {
 cleanup() {
     local rc=$? i
     trap - EXIT
+    trap - ERR
     set +e
 
     if process_alive "${QEMU_PID:-}"; then
@@ -222,7 +223,7 @@ cleanup() {
         partx -d -- "$LOOP_DEV" >/dev/null 2>&1 || true
         for ((i = 0; i < 20; i++)); do
             losetup -d "$LOOP_DEV" 2>/dev/null || true
-            [[ -z "$(losetup -n -O NAME -- "$LOOP_DEV" 2>/dev/null)" ]] && break
+            [[ -z "$(losetup -n -O BACK-FILE -- "$LOOP_DEV" 2>/dev/null)" ]] && break
             sleep 0.5
             unmount_loop_mounts
         done
@@ -303,12 +304,14 @@ pass "deploy-engine" "deploy completed and loop partitions exist"
 log "Detaching the loop device before QEMU"
 sync
 udevadm settle --timeout=30 || true
+saved_err_trap="$(trap -p ERR || true)"
+trap - ERR
 detached=0
 for ((i = 0; i < 20; i++)); do
     unmount_loop_mounts
     partx -d -- "$LOOP_DEV" >/dev/null 2>&1 || true
     losetup -d "$LOOP_DEV" 2>/dev/null || true
-    if [[ -z "$(losetup -n -O NAME -- "$LOOP_DEV" 2>/dev/null)" ]]; then
+    if [[ -z "$(losetup -n -O BACK-FILE -- "$LOOP_DEV" 2>/dev/null)" ]]; then
         detached=1
         break
     fi
@@ -316,6 +319,7 @@ for ((i = 0; i < 20; i++)); do
 done
 (( detached == 1 )) || die "Failed to detach $LOOP_DEV; still mounted or busy"
 LOOP_DEV=""
+eval "${saved_err_trap:-trap - ERR}"
 udevadm settle --timeout=30 || true
 
 # ---------------------------------------------------------------------------

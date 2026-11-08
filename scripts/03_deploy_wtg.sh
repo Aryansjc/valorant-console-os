@@ -46,6 +46,7 @@ ESP_MNT=""
 PART1=""
 PART2=""
 UDEV_RULE_FILE=""
+ERR_TRAP_SAVED=""
 
 readonly UDEV_RULE_DIR="/run/udev/rules.d"
 
@@ -157,6 +158,20 @@ cleanup() {
     exit "$rc"
 }
 trap cleanup EXIT
+
+# reged 0.1 can exit non-zero after a successful export/import and during its
+# cleanup.  Those statuses are accepted only after explicit verification, so
+# suppress the global ERR diagnostic around the expected failure windows.
+suspend_err_trap() {
+    ERR_TRAP_SAVED="$(trap -p ERR || true)"
+    trap - ERR
+}
+
+resume_err_trap() {
+    if [[ -n "$ERR_TRAP_SAVED" ]]; then
+        eval "$ERR_TRAP_SAVED"
+    fi
+}
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -295,10 +310,12 @@ hex_to_reg() {
 
 run_reged_import() {
     local hive="$1" prefix="$2" regfile="$3" logfile="$4" rc=0
+    suspend_err_trap
     set +e
     ( reged -C -I "$hive" "$prefix" "$regfile" ) >"$logfile" 2>&1
     rc=$?
     set -e
+    resume_err_trap
     if ! grep -q 'operation SUCCEEDED' "$logfile"; then
         printf '[phase03] reged import failed; log follows:\n' >&2
         sed -n '1,120p' "$logfile" >&2
@@ -316,10 +333,12 @@ run_reged_import() {
 reged_export() {
     local hive="$1" prefix="$2" key="$3" out="$4" rc=0
     rm -f -- "$out"
+    suspend_err_trap
     set +e
     ( reged -x "$hive" "$prefix" "$key" "$out" ) >/dev/null 2>&1
     rc=$?
     set -e
+    resume_err_trap
     if [[ ! -s "$out" ]]; then
         printf '[phase03] reged export produced no data (exit %s): %s\\%s\n' "$rc" "$prefix" "$key" >&2
         return 1
@@ -710,10 +729,12 @@ run_reged_import "$BCD_WORK" 'HKEY_LOCAL_MACHINE\BCD00000000' "$BCD_PATCH" "${WO
 
 # Remove the WinPE-only flags from the repurposed setup loader.
 BCD_DELETE_LOG="${WORK_DIR}/bcd_delete.log"
+suspend_err_trap
 set +e
 printf 'cd \\Objects\\%s\\Elements\nrdel 26000022\nrdel 26000010\nrdel 260000b0\nq\ny\n' "$LOADER_GUID" \
     | reged -C -e "$BCD_WORK" >"$BCD_DELETE_LOG" 2>&1
 set -e
+resume_err_trap
 
 verify_bcd "$BCD_WORK" || die "BCD verification failed after patching"
 
