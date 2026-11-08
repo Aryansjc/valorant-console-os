@@ -7,6 +7,7 @@
 *.ps1 text eol=crlf
 
 # Binary artifacts
+payloads/bcd_template binary
 *.cab binary
 *.iso binary
 *.esd binary
