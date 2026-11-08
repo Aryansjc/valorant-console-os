@@ -117,7 +117,7 @@ fi
 REQUIRED_TOOLS=(
     qemu-system-x86_64 swtpm socat losetup partx truncate stat
     blkid udevadm ntfs-3g reged mountpoint sync awk grep sed
-    sha256sum date ps sleep cat timeout pgrep readlink umount
+    sha256sum date ps sleep cat timeout pgrep readlink umount lsblk
 )
 for tool in "${REQUIRED_TOOLS[@]}"; do
     command -v "$tool" >/dev/null 2>&1 || die "Required tool not found: $tool"
@@ -182,8 +182,21 @@ stop_swtpm() {
     SWTPM_PID=""
 }
 
+# The desktop can auto-mount any new filesystem it sees.  Such a mount keeps
+# the loop device busy and prevents a clean detach, so clear those mounts
+# before touching the loop device.
+unmount_loop_mounts() {
+    local mp
+    [[ -n "${LOOP_DEV:-}" ]] || return 0
+    while IFS= read -r mp; do
+        [[ -n "$mp" ]] || continue
+        log "Unmounting loop mount left by an automounter: $mp"
+        umount -- "$mp" 2>/dev/null || umount -l -- "$mp" 2>/dev/null || true
+    done < <(lsblk -lnpo MOUNTPOINTS -- "$LOOP_DEV" 2>/dev/null | sed '/^[[:space:]]*$/d')
+}
+
 cleanup() {
-    local rc=$?
+    local rc=$? i
     trap - EXIT
     set +e
 
@@ -205,8 +218,14 @@ cleanup() {
         umount -- "$MOUNT_DIR" || umount -l -- "$MOUNT_DIR" || true
     fi
     if [[ -n "${LOOP_DEV:-}" ]]; then
+        unmount_loop_mounts
         partx -d -- "$LOOP_DEV" >/dev/null 2>&1 || true
-        losetup -d "$LOOP_DEV" 2>/dev/null || true
+        for ((i = 0; i < 20; i++)); do
+            losetup -d "$LOOP_DEV" 2>/dev/null || true
+            [[ -z "$(losetup -n -O NAME -- "$LOOP_DEV" 2>/dev/null)" ]] && break
+            sleep 0.5
+            unmount_loop_mounts
+        done
     fi
     LOOP_DEV=""
 
@@ -283,8 +302,19 @@ pass "deploy-engine" "deploy completed and loop partitions exist"
 
 log "Detaching the loop device before QEMU"
 sync
-partx -d -- "$LOOP_DEV" >/dev/null 2>&1 || true
-losetup -d "$LOOP_DEV" || die "Failed to detach $LOOP_DEV"
+udevadm settle --timeout=30 || true
+detached=0
+for ((i = 0; i < 20; i++)); do
+    unmount_loop_mounts
+    partx -d -- "$LOOP_DEV" >/dev/null 2>&1 || true
+    losetup -d "$LOOP_DEV" 2>/dev/null || true
+    if [[ -z "$(losetup -n -O NAME -- "$LOOP_DEV" 2>/dev/null)" ]]; then
+        detached=1
+        break
+    fi
+    sleep 0.5
+done
+(( detached == 1 )) || die "Failed to detach $LOOP_DEV; still mounted or busy"
 LOOP_DEV=""
 udevadm settle --timeout=30 || true
 

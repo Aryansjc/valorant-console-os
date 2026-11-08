@@ -45,6 +45,9 @@ NTFS_MNT=""
 ESP_MNT=""
 PART1=""
 PART2=""
+UDEV_RULE_FILE=""
+
+readonly UDEV_RULE_DIR="/run/udev/rules.d"
 
 usage() {
     cat <<'EOF'
@@ -131,6 +134,17 @@ cleanup() {
     if [[ -n "$ESP_MNT" ]] && mountpoint -q -- "$ESP_MNT" 2>/dev/null; then
         umount -- "$ESP_MNT" || true
     fi
+    if [[ -n "${TARGET:-}" ]]; then
+        while IFS= read -r target_mount; do
+            [[ -n "$target_mount" ]] || continue
+            log "Unmounting target mount left by an automounter: $target_mount"
+            umount -- "$target_mount" 2>/dev/null || umount -l -- "$target_mount" 2>/dev/null || true
+        done < <(lsblk -lnpo MOUNTPOINTS -- "$TARGET" 2>/dev/null | sed '/^[[:space:]]*$/d')
+    fi
+    if [[ -n "${UDEV_RULE_FILE:-}" && -f "$UDEV_RULE_FILE" ]]; then
+        rm -f -- "$UDEV_RULE_FILE" || true
+        udevadm control --reload-rules >/dev/null 2>&1 || true
+    fi
     sync || true
     if [[ -n "$WORK_DIR" && -d "$WORK_DIR" ]] && (( KEEP_WORK == 0 )); then
         rm -rf -- "$WORK_DIR"
@@ -165,6 +179,67 @@ wait_for_partitions() {
         sleep 1
     done
     return 1
+}
+
+target_mountpoints() {
+    lsblk -lnpo MOUNTPOINTS -- "$TARGET" 2>/dev/null \
+        | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+        | sed '/^$/d' || true
+}
+
+target_has_mounts() {
+    [[ -n "$(target_mountpoints)" ]]
+}
+
+unmount_target_mounts() {
+    local mp failed=0
+    while IFS= read -r mp; do
+        [[ -n "$mp" ]] || continue
+        log "Unmounting target path auto-mounted by the desktop: $mp"
+        if ! umount -- "$mp" 2>/dev/null; then
+            warn "Normal unmount failed for $mp; trying a lazy unmount"
+            umount -l -- "$mp" 2>/dev/null || failed=1
+        fi
+    done < <(target_mountpoints)
+    return "$failed"
+}
+
+# Wait briefly for any delayed desktop auto-mount request, unmount it, and
+# require two consecutive clean samples before returning.
+ensure_target_unmounted() {
+    local i stable=0
+    for ((i = 0; i < 20; i++)); do
+        unmount_target_mounts || true
+        if target_has_mounts; then
+            stable=0
+        else
+            stable=$((stable + 1))
+            if (( stable >= 2 )); then
+                return 0
+            fi
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+# udisks/Plasma auto-mounts newly appeared filesystems.  While we are writing
+# raw data to the target, a second mount would corrupt the filesystem and make
+# the target impossible to unmount.  Hide the target from the desktop for the
+# duration of the deployment; the rule is removed by cleanup().
+install_target_udev_guard() {
+    mkdir -p -- "$UDEV_RULE_DIR" || die "Cannot create $UDEV_RULE_DIR"
+    UDEV_RULE_FILE="${UDEV_RULE_DIR}/99-valos-ignore-${TARGET_BASE}.rules"
+    {
+        printf '# Temporary rule written by 03_deploy_wtg.sh; removed on exit.\n'
+        printf 'ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="%s", ENV{UDISKS_AUTO}="0", ENV{UDISKS_IGNORE}="1"\n' "$TARGET_BASE"
+        printf 'ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="%s*", ENV{UDISKS_AUTO}="0", ENV{UDISKS_IGNORE}="1"\n' "$TARGET_BASE"
+    } > "$UDEV_RULE_FILE" || die "Cannot write $UDEV_RULE_FILE"
+    udevadm control --reload-rules || die "udevadm control --reload-rules failed"
+    udevadm trigger --action=change --subsystem-match=block --sysname-match="${TARGET_BASE}*" \
+        || die "udevadm trigger failed for $TARGET_BASE"
+    udevadm settle --timeout=30 || true
+    log "Installed transient udev auto-mount guard for $TARGET_BASE"
 }
 
 verify_gpt_layout() {
@@ -482,6 +557,9 @@ fi
 log "Commit confirmed for $TARGET"
 date -u +'[phase03] started at %Y-%m-%dT%H:%M:%SZ'
 
+ensure_target_unmounted || die "Target has mounts that could not be cleared before deployment"
+install_target_udev_guard
+
 WORK_DIR="$(mktemp -d "${BUILD_DIR}/phase03_deploy.XXXXXX")"
 if [[ "$WORK_DIR" != "${BUILD_DIR}/phase03_deploy."* ]]; then
     die "Temporary directory escaped build/: $WORK_DIR"
@@ -526,8 +604,12 @@ verify_gpt_layout
 log "Formatting $PART1 as FAT32 ($WTG_EFI_LABEL)"
 mkfs.fat -F 32 -n "$WTG_EFI_LABEL" "$PART1"
 
+ensure_target_unmounted || die "Target was auto-mounted after formatting the ESP"
+
 log "Formatting $PART2 as NTFS ($VAL_OS_LABEL)"
 mkfs.ntfs -Q -F -L "$VAL_OS_LABEL" "$PART2"
+
+ensure_target_unmounted || die "Target was auto-mounted after formatting the OS partition"
 
 if [[ "$(blkid -p -o value -s TYPE -- "$PART1" 2>/dev/null)" != "vfat" ]]; then
     die "Partition 1 is not detected as vfat"
@@ -536,8 +618,15 @@ if [[ "$(blkid -p -o value -s TYPE -- "$PART2" 2>/dev/null)" != "ntfs" ]]; then
     die "Partition 2 is not detected as NTFS"
 fi
 
+if target_has_mounts; then
+    die "Target is mounted immediately before WIM apply; refusing a raw write"
+fi
 log "Applying image 1 from $WIM_PATH to $PART2"
 wimlib-imagex apply "$WIM_PATH" 1 "$PART2"
+
+if target_has_mounts; then
+    die "Target was mounted while the WIM was being applied; refusing to patch a possibly inconsistent filesystem"
+fi
 
 if ! ntfs-3g -o rw "$PART2" "$NTFS_MNT"; then
     die "Failed to mount the NTFS partition read-write"
@@ -671,6 +760,8 @@ NTFS_MNT=""
 umount -- "$ESP_MNT" || die "Failed to unmount the ESP cleanly"
 ESP_MNT=""
 sync
+
+ensure_target_unmounted || die "Target is still mounted after deployment"
 partprobe -- "$TARGET" >/dev/null 2>&1 || true
 udevadm settle --timeout=30 || true
 
