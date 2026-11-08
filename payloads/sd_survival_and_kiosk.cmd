@@ -118,7 +118,23 @@ REM ---------------------------------------------------------------------------
     ver
     whoami
     sc query WinDefend
+    reg query "HKLM\HARDWARE\DESCRIPTION\System\BIOS" /v SystemManufacturer
+    reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentBuild
+    reg query "HKLM\SYSTEM\CurrentControlSet\Control" /v PortableOperatingSystem
 ) > "%RIOT_DIR%\boot_verified.txt" 2>&1
+
+REM ---------------------------------------------------------------------------
+REM  7. QEMU boot-gate auto-shutdown
+REM  Only a QEMU SystemManufacturer string schedules shutdown.  Physical
+REM  hardware is never shut down by this provisioning script.
+REM ---------------------------------------------------------------------------
+set "SYS_MFG="
+for /f "tokens=2,*" %%A in ('reg query "HKLM\HARDWARE\DESCRIPTION\System\BIOS" /v SystemManufacturer 2^>nul ^| findstr /i "SystemManufacturer"') do set "SYS_MFG=%%B"
+echo [%DATE% %TIME%] SystemManufacturer=%SYS_MFG% >> "%LOG%"
+if /i "%SYS_MFG%"=="QEMU" (
+    echo [%DATE% %TIME%] QEMU boot gate detected; scheduling shutdown >> "%LOG%"
+    shutdown /s /t 15 /f >> "%LOG%" 2>&1
+)
 
 echo [%DATE% %TIME%] Phase 2 provisioning complete >> "%LOG%"
 echo.

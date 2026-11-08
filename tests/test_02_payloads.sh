@@ -181,6 +181,9 @@ contains "payload-autologon" "$SETUP_CMD" "/v AutoAdminLogon /t REG_SZ /d \"1\""
 contains "payload-username" "$SETUP_CMD" "/v DefaultUserName /t REG_SZ /d \"ValPlayer\""
 contains "payload-shell" "$SETUP_CMD" 'cmd.exe /c \"C:\Riot Games\val-kiosk.bat\"'
 contains "payload-marker" "$SETUP_CMD" "boot_verified.txt"
+contains "payload-qemu-detect" "$SETUP_CMD" 'reg query "HKLM\HARDWARE\DESCRIPTION\System\BIOS" /v SystemManufacturer'
+contains "payload-qemu-manufacturer" "$SETUP_CMD" 'if /i "%SYS_MFG%"=="QEMU"'
+contains "payload-qemu-shutdown" "$SETUP_CMD" "shutdown /s /t 15 /f"
 
 SERVICES=(
     SysMain WSearch DiagTrack dmwappushservice Spooler PrintNotify Fax
