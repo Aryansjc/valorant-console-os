@@ -1,6 +1,9 @@
 # Generated build artifacts (disposable: WIM, extracted ISO, logs, manifests)
 /build/
 
+# Disposable QEMU/OVMF/TPM test assets
+/vm-test/
+
 # Source installation media (large; never commit)
 /*.iso
 /*.esd

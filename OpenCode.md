@@ -78,7 +78,8 @@ This toolkit can destroy data. A wrong device name is unacceptable.
     otherwise part of the host's root device ancestry;
   - is busy (`findmnt`, `fuser`, or an active mount on any child).
 - Allowed write targets are exactly:
-  1. loop devices created by this toolkit from files under `./build/`; and
+  1. loop devices created by this toolkit from files under `./build/`, or from
+     the disposable QEMU image under `./vm-test/`; and
   2. a whole removable disk (`TYPE=disk`, `RM=1`) with no host filesystem
      mounted, after explicit confirmation.
 - Default to dry-run. Destructive operations require a second explicit flag
@@ -147,7 +148,7 @@ No implementation proceeds without an executable gate.
   Rule 1.
 - Tests must be repeatable and safe: read-only against the host; destructive
   checks run only inside a disposable VM or a loop-backed image under
-  `"$PROJECT_ROOT/build/"`.
+  `"$PROJECT_ROOT/build/"` or `"$PROJECT_ROOT/vm-test/"`.
 - Disk-safety tests must exercise the `lsblk` validator with fixtures/mocks and
   prove that `nvme*`, host-mounted, swap, and non-removable targets are
   rejected.
