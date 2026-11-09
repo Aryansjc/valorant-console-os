@@ -543,7 +543,8 @@ SYSTEM_HIVE="${MOUNT_DIR}/Windows/System32/config/SYSTEM"
 if [[ -f "$SOFTWARE_HIVE" ]]; then
     if export_reg "$SOFTWARE_HIVE" 'HKEY_LOCAL_MACHINE\SOFTWARE' \
         'Microsoft\Windows NT\CurrentVersion' "${VERIFY_DIR}/currentversion.reg"; then
-        if tr -d '\r' < "${VERIFY_DIR}/currentversion.reg" | grep -Fxq -- '"CurrentBuild"="19045"'; then
+        tr -d '\r' < "${VERIFY_DIR}/currentversion.reg" > "${VERIFY_DIR}/currentversion.norm"
+        if grep -Fxq -- '"CurrentBuild"="19045"' "${VERIFY_DIR}/currentversion.norm"; then
             pass "software-currentbuild" "SOFTWARE CurrentBuild is 19045"
         else
             fail "software-currentbuild" "SOFTWARE CurrentBuild is not 19045"
@@ -586,7 +587,8 @@ fi
 
 if [[ -n "$CONTROL_SET" ]] && export_reg "$SYSTEM_HIVE" 'HKEY_LOCAL_MACHINE\SYSTEM' \
     "${CONTROL_SET}\\Control" "${VERIFY_DIR}/control.reg"; then
-    if tr -d '\r' < "${VERIFY_DIR}/control.reg" | grep -Fxq -- '"PortableOperatingSystem"=dword:00000001'; then
+    tr -d '\r' < "${VERIFY_DIR}/control.reg" > "${VERIFY_DIR}/control.norm"
+    if grep -Fxq -- '"PortableOperatingSystem"=dword:00000001' "${VERIFY_DIR}/control.norm"; then
         pass "system-portable-os" "SYSTEM PortableOperatingSystem is 1"
     else
         fail "system-portable-os" "SYSTEM PortableOperatingSystem is not 1"
@@ -635,14 +637,27 @@ else
 fi
 
 for path in Windows/System32/ci.dll Windows/System32/drivers/tpm.sys; do
-    if [[ -f "${MOUNT_DIR}/${path}" ]]; then
+    abs="${MOUNT_DIR}/${path}"
+    if [[ -f "$abs" ]]; then
         pass "invariant-file-$(basename "$path")" "present: /$path"
+    elif [[ -L "$abs" ]]; then
+        # ntfs-3g exposes WOF-compressed System32 files as symlinks whose
+        # target is the unsupported reparse tag.  The directory entry exists
+        # and the WOF driver restores the data at runtime, so accept it.
+        reparse_target="$(readlink -- "$abs" 2>/dev/null || true)"
+        if [[ "$reparse_target" == *'unsupported reparse tag 0x80000017'* ]]; then
+            pass "invariant-file-$(basename "$path")" \
+                "present as WOF reparse point (0x80000017): /$path"
+        else
+            fail "invariant-file-$(basename "$path")" \
+                "unexpected reparse target for /$path: ${reparse_target:-<empty>}"
+        fi
     else
         fail "invariant-file-$(basename "$path")" "missing: /$path"
     fi
 done
 
-if [[ "$OVMF_CODE" == *secboot* ]] && printf '%s\n' "${QEMU_ARGS[@]}" | grep -Fq -- "q35,smm=on"; then
+if [[ "$OVMF_CODE" == *secboot* ]] && grep -Fq -- "q35,smm=on" <<< "${QEMU_ARGS[*]}"; then
     pass "invariant-secureboot-firmware" "secboot OVMF 4m launched with SMM"
 else
     fail "invariant-secureboot-firmware" "gate did not launch secboot OVMF with SMM"
