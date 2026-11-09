@@ -374,7 +374,13 @@ read_reg_element_hex() {
 }
 
 verify_bcd() {
-    local hive="$1" hex element path_reg elements_reg
+    local hive="$1" hex element path_reg elements_reg description_reg
+    description_reg="${WORK_DIR}/verify_bcd_description.reg"
+    reged_export "$hive" 'HKEY_LOCAL_MACHINE\BCD00000000' 'Description' "$description_reg" || return 1
+    grep -Fq '"KeyName"="BCD00000000"' "$description_reg" || return 1
+    grep -Eq '"System"=dword:00000001' "$description_reg" || return 1
+    grep -Eq '"TreatAsSystem"=dword:00000001' "$description_reg" || return 1
+
     hex="$(read_reg_element_hex "$hive" "${BOOTMGR_GUID}\\Elements\\11000001" "${WORK_DIR}/verify_bootmgr.reg")" \
         || return 1
     [[ "${hex:32:2}" == "06" ]] || return 1
@@ -712,6 +718,18 @@ LOADER_BLOB="$(make_gpt_device_blob "$PART2_GUID")"
 BCD_PATCH="${WORK_DIR}/bcd_patch.reg"
 {
     printf 'Windows Registry Editor Version 5.00\n\n'
+    # The ISO BCD is a setup store, not an installed system store.  Sysprep's
+    # Sysprep_Online_Specialize_Bcd calls BcdOpenStoreFromFile and then
+    # BcdMarkAsSystemStore (which only sets TreatAsSystem) followed by an
+    # internal BcdIsSystemStore check that requires BOTH Description\System
+    # and Description\TreatAsSystem to be 1.  Without the persisted System
+    # marker the check returns STATUS_FILE_INVALID (0xC0000098) and specialize
+    # fails with "File is not system store".  KeyName must also name the
+    # system-store mount point instead of the ISO's stale value.
+    printf '[HKEY_LOCAL_MACHINE\\BCD00000000\\Description]\n'
+    printf '"KeyName"="BCD00000000"\n'
+    printf '"System"=dword:00000001\n'
+    printf '"TreatAsSystem"=dword:00000001\n\n'
     printf '[HKEY_LOCAL_MACHINE\\BCD00000000\\Objects\\%s\\Elements\\11000001]\n' "$BOOTMGR_GUID"
     printf '"Element"=hex:%s\n\n' "$(hex_to_reg "$BOOTMGR_BLOB")"
     printf '[HKEY_LOCAL_MACHINE\\BCD00000000\\Objects\\%s\\Elements\\11000001]\n' "$LOADER_GUID"

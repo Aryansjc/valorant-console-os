@@ -47,6 +47,7 @@ SWTPM_PID=""
 RO_MOUNTED=0
 TIMED_OUT=0
 QEMU_RC=""
+QEMU_SHUTDOWN_OK=0
 
 PASS=0
 FAIL=0
@@ -435,10 +436,15 @@ log "QEMU exited with status ${QEMU_RC}"
 
 stop_swtpm
 
+# A clean QEMU exit is necessary but not sufficient: the guest must also have
+# written the first-logon marker below.  Both are asserted together there.
 if (( TIMED_OUT )); then
-    fail "qemu-autoshutdown" "guest did not shut down within ${TIMEOUT_SECONDS}s"
+    log "QEMU timed out; the guest did not request shutdown"
+elif (( QEMU_RC == 0 )); then
+    QEMU_SHUTDOWN_OK=1
+    log "QEMU exited cleanly; awaiting the boot-marker check"
 else
-    pass "qemu-autoshutdown" "guest shut down and QEMU exited on its own"
+    log "QEMU exited with status ${QEMU_RC}; treating it as an abnormal exit"
 fi
 
 # ---------------------------------------------------------------------------
@@ -484,6 +490,16 @@ if [[ -f "$MARKER" ]]; then
     printf '%s\n' '---- end boot_verified.txt ----'
 else
     fail "boot-marker-present" "missing /Riot Games/boot_verified.txt"
+fi
+
+if [[ -f "$MARKER" ]] && (( QEMU_SHUTDOWN_OK == 1 )); then
+    pass "qemu-autoshutdown" "guest wrote the boot marker and exited QEMU cleanly (rc 0)"
+elif (( TIMED_OUT )); then
+    fail "qemu-autoshutdown" "guest did not shut down within ${TIMEOUT_SECONDS}s"
+elif (( QEMU_RC != 0 )); then
+    fail "qemu-autoshutdown" "QEMU exited with status ${QEMU_RC}; no clean guest shutdown"
+else
+    fail "qemu-autoshutdown" "QEMU exited cleanly but the guest boot marker is missing"
 fi
 
 if [[ -f "$MARKER" ]] && grep -Fq -- "QEMU" "$MARKER"; then
