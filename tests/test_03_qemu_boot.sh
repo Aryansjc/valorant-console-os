@@ -21,6 +21,7 @@ readonly TEST_DIR="${PROJECT_ROOT}/vm-test"
 readonly IMAGE="${TEST_DIR}/test_sdcard.img"
 readonly VARS="${TEST_DIR}/OVMF_VARS.4m.fd"
 readonly MOUNT_DIR="${TEST_DIR}/mnt-ro"
+readonly ESP_MOUNT_DIR="${TEST_DIR}/mnt-esp"
 readonly SCREENS_DIR="${TEST_DIR}/screens"
 readonly TPM_DIR="${TEST_DIR}/tpm-state"
 readonly SWTPM_SOCK="${TEST_DIR}/swtpm.sock"
@@ -117,7 +118,7 @@ fi
 
 REQUIRED_TOOLS=(
     qemu-system-x86_64 swtpm socat losetup partx truncate stat
-    blkid udevadm ntfs-3g reged mountpoint sync awk grep sed
+    blkid udevadm ntfs-3g reged mount mountpoint sync awk grep sed
     sha256sum date ps sleep cat timeout pgrep readlink umount lsblk
 )
 for tool in "${REQUIRED_TOOLS[@]}"; do
@@ -218,6 +219,9 @@ cleanup() {
 
     if mountpoint -q -- "$MOUNT_DIR" 2>/dev/null; then
         umount -- "$MOUNT_DIR" || umount -l -- "$MOUNT_DIR" || true
+    fi
+    if mountpoint -q -- "$ESP_MOUNT_DIR" 2>/dev/null; then
+        umount -- "$ESP_MOUNT_DIR" || umount -l -- "$ESP_MOUNT_DIR" || true
     fi
     if [[ -n "${LOOP_DEV:-}" ]]; then
         unmount_loop_mounts
@@ -454,15 +458,16 @@ log "Attaching the image read-only for verification"
 LOOP_DEV="$(losetup --find --show --read-only --partscan "$IMAGE")" \
     || die "Failed to attach the image read-only"
 LOOP_DEV="$(readlink -f -- "$LOOP_DEV")"
+PART1="${LOOP_DEV}p1"
 PART2="${LOOP_DEV}p2"
 
 for ((i = 0; i < 30; i++)); do
-    [[ -b "$PART2" ]] && break
+    [[ -b "$PART1" && -b "$PART2" ]] && break
     partx -u -- "$LOOP_DEV" >/dev/null 2>&1 || true
     sleep 1
 done
-if [[ ! -b "$PART2" ]]; then
-    fail "verify-partition" "read-only partition node did not appear: $PART2"
+if [[ ! -b "$PART1" || ! -b "$PART2" ]]; then
+    fail "verify-partition" "read-only partition nodes did not appear: $PART1 $PART2"
     summary
 fi
 
@@ -478,6 +483,30 @@ else
     summary
 fi
 pass "verify-mount" "partition 2 mounted read-only at $MOUNT_DIR"
+
+# The deployed ESP BCD must be a real system store.  Sysprep's specialize
+# action rejected the ISO setup store with STATUS_FILE_INVALID (0xC0000098)
+# unless both markers are present, so assert them from the offline image.
+mkdir -p -- "$ESP_MOUNT_DIR"
+if mount -o ro -- "$PART1" "$ESP_MOUNT_DIR" 2>"${VERIFY_DIR}/esp-mount.err"; then
+    ESP_BCD="${ESP_MOUNT_DIR}/EFI/Microsoft/Boot/BCD"
+    if [[ -f "$ESP_BCD" ]] && export_reg "$ESP_BCD" \
+        'HKEY_LOCAL_MACHINE\BCD00000000' 'Description' "${VERIFY_DIR}/bcd_description.reg"; then
+        if grep -Fq -- '"KeyName"="BCD00000000"' "${VERIFY_DIR}/bcd_description.reg" \
+            && grep -Eq -- '"System"=dword:00000001' "${VERIFY_DIR}/bcd_description.reg" \
+            && grep -Eq -- '"TreatAsSystem"=dword:00000001' "${VERIFY_DIR}/bcd_description.reg"; then
+            pass "bcd-system-store" "ESP BCD carries the KeyName/System/TreatAsSystem markers"
+        else
+            fail "bcd-system-store" "ESP BCD is not marked as a Windows system store"
+        fi
+    else
+        fail "bcd-system-store" "could not read EFI/Microsoft/Boot/BCD from the ESP"
+    fi
+    umount -- "$ESP_MOUNT_DIR" || umount -l -- "$ESP_MOUNT_DIR" || true
+else
+    cat -- "${VERIFY_DIR}/esp-mount.err" >&2 || true
+    fail "bcd-system-store" "could not mount the ESP read-only"
+fi
 
 # ---------------------------------------------------------------------------
 # Required first-logon artifacts
