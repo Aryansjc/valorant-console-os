@@ -12,7 +12,7 @@ a UEFI/GPT Windows To Go microSD system with a Valorant-only console shell.
 |-------|-------|------|
 | 1 | ISO extraction, LTSC WIM slim/optimize, KB5015684 staging, Vanguard audit | 23/23 passing |
 | 2 | unattend/OOBE, kiosk shell, microSD survival tweaks, WIM injection | 57/57 passing |
-| 3 | GPT/UEFI deploy engine, offline boot fixes, OVMF + TPM 2.0 VM smoke test | gate in `tests/test_03_qemu_boot.sh` |
+| 3 | GPT/UEFI deploy engine, offline boot fixes, OVMF + TPM 2.0 VM smoke test | 17/17 passing |
 | 4 | microSD write and read-back verify | planned |
 | 5 | Bare-metal boot and Vanguard attestation | planned |
 

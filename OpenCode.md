@@ -162,14 +162,11 @@ Phase gate sequence (tests must exist before implementation of each phase):
 
 | Gate | Scope | Verification focus |
 |------|-------|--------------------|
-| 0 | Host preflight and source discovery | Tools present, ISO found by glob, no hardcoded paths |
-| 1 | ISO extraction and LTSC edition selection | `install.wim`/ESD, edition index, 19044 baseline |
-| 2 | Offline servicing to 19045 via `KB5015684` | Package applied, build = 19045, servicing intact |
-| 3 | Offline image customization and kiosk payload | Kiosk shell, drivers, flash-wear tweaks, invariants |
-| 4 | WTG image assembly (GPT/UEFI) | GPT layout, ESP, boot files, no CSM |
-| 5 | Disposable VM smoke test | OVMF + TPM 2.0 boot, kiosk behavior, Vanguard prerequisites |
-| 6 | microSD write and read-back verify | Validated `RM=1` target only, checksums, boot files |
-| 7 | Bare-metal boot and Vanguard attestation | Secure Boot on, TPM 2.0 on, Defender on, Vanguard loads |
+| 1 | ISO extraction, LTSC WIM preparation, `KB5015684` staging | WIM/edition/build audit (`tests/test_01_wim.sh`) |
+| 2 | Payload injection: unattend, kiosk shell, survival tweaks | Payload syntax/CRLF and injected WIM contents (`tests/test_02_payloads.sh`) |
+| 3 | GPT/UEFI WTG deploy and OVMF + TPM 2.0 boot | GPT/ESP, BCD system store, first logon, invariants (`tests/test_03_qemu_boot.sh`) |
+| 4 | microSD write and read-back verification | Validated `RM=1` target or loop image, GPT/ESP/NTFS/hash checks (`tests/test_04_sdcard.sh`) |
+| 5 | Bare-metal boot and Vanguard attestation | Secure Boot on, TPM 2.0 on, Defender on, Vanguard loads |
 
 ## Directory Contract
 
