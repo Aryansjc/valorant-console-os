@@ -166,7 +166,7 @@ Phase gate sequence (tests must exist before implementation of each phase):
 | 2 | Payload injection: unattend, kiosk shell, survival tweaks | Payload syntax/CRLF and injected WIM contents (`tests/test_02_payloads.sh`) |
 | 3 | GPT/UEFI WTG deploy and OVMF + TPM 2.0 boot | GPT/ESP, BCD system store, first logon, invariants (`tests/test_03_qemu_boot.sh`) |
 | 4 | microSD write and read-back verification | Validated `RM=1` target or loop image, GPT/ESP/NTFS/hash checks (`tests/test_04_sdcard.sh`) |
-| 5 | Bare-metal boot and Vanguard attestation | Secure Boot on, TPM 2.0 on, Defender on, Vanguard loads |
+| 5 | Bare-metal boot and Vanguard attestation | Secure Boot on, TPM 2.0 on, Defender on, Vanguard loads; self-test plus a physical-hardware report (`tests/test_05_baremetal.sh`) |
 
 ## Directory Contract
 

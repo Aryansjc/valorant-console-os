@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "collectorVersion": "1.0.0",
+  "reportId": "REPORT_ID",
+  "collectedAtUtc": "REPORT_TIMESTAMP",
+  "isElevated": true,
+  "os": {
+    "productName": "Microsoft Windows 10 Enterprise LTSC 2021",
+    "build": "19045",
+    "displayVersion": "22H2",
+    "architecture": "64-bit",
+    "firmwareType": "Uefi",
+    "portableOperatingSystem": true,
+    "bootedFromRemovableMedia": true,
+    "computerName": "VALCONSOLE",
+    "userName": "ValPlayer"
+  },
+  "firmware": {
+    "secureBootEnabled": true,
+    "secureBootSetupMode": false
+  },
+  "tpm": {
+    "present": true,
+    "ready": true,
+    "enabled": true,
+    "activated": true,
+    "owned": true,
+    "specVersion": "2.0",
+    "manufacturerId": "0",
+    "manufacturerVersion": "1.0",
+    "ekPublicKeyHashSha256": "EK_HASH"
+  },
+  "defender": {
+    "serviceState": "Running",
+    "securityHealthServiceState": "Running",
+    "amServiceEnabled": true,
+    "antivirusEnabled": true,
+    "realTimeProtectionEnabled": true,
+    "tamperProtectionEnabled": true,
+    "signatureAgeDays": 1,
+    "signatureVersion": "1.0.0.0"
+  },
+  "codeIntegrity": {
+    "ciDllPresent": true,
+    "tpmSysPresent": true,
+    "testSigningEnabled": false,
+    "kernelDebugEnabled": false,
+    "driverBlocklistEnabled": true,
+    "integrityChecksDisabled": false,
+    "hvciStatus": "running",
+    "hvciPolicyDisabled": false,
+    "vbsStatus": 2
+  },
+  "vanguard": {
+    "installed": true,
+    "vgkServiceState": "Running",
+    "vgcServiceState": "Running",
+    "vgkDriverLoaded": true,
+    "vgkPath": "C:\\Program Files\\Riot Vanguard\\vgk.sys",
+    "vgkFilePresent": true,
+    "vgkSignatureStatus": "Valid",
+    "vgkSigner": "CN=Riot Games, Inc., O=Riot Games, Inc.",
+    "vgcPath": "C:\\Program Files\\Riot Vanguard\\vgc.exe",
+    "vgcFilePresent": true,
+    "vgcSignatureStatus": "Valid",
+    "vgcSigner": "CN=Riot Games, Inc., O=Riot Games, Inc."
+  },
+  "kiosk": {
+    "shell": "cmd.exe /c \"C:\\Riot Games\\val-kiosk.bat\"",
+    "expectedShell": "cmd.exe /c \"C:\\Riot Games\\val-kiosk.bat\"",
+    "user": "ValPlayer",
+    "autoAdminLogon": 1,
+    "bootVerifiedMarker": true,
+    "bootVerifiedContentSha256": "MARKER_HASH"
+  },
+  "systemVolume": {
+    "driveLetter": "C",
+    "fileSystem": "NTFS",
+    "diskGuid": "DISK_GUID",
+    "partitionGuid": "PART_GUID",
+    "diskSerialNumber": "0123456789ABCDEF",
+    "busType": "USB",
+    "model": "Ultra USB 3.0",
+    "sizeBytes": 31914983424,
+    "isBoot": true,
+    "isSystem": false
+  },
+  "bareMetal": {
+    "isBareMetal": true,
+    "isVirtual": false,
+    "manufacturer": "ASUSTeK COMPUTER INC.",
+    "model": "ROG STRIX B550-I GAMING",
+    "biosManufacturer": "American Megatrends Inc.",
+    "biosVersion": "2806",
+    "hypervisorPresent": false
+  }
+}
