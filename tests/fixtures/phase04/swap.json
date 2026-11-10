@@ -1,0 +1,28 @@
+{
+  "blockdevices": [
+    {
+      "name": "sdb",
+      "kname": "sdb",
+      "path": "/dev/sdb",
+      "type": "disk",
+      "rm": true,
+      "ro": false,
+      "size": "29.7G",
+      "mountpoints": [null],
+      "pkname": null,
+      "children": [
+        {
+          "name": "sdb1",
+          "kname": "sdb1",
+          "path": "/dev/sdb1",
+          "type": "part",
+          "rm": true,
+          "ro": false,
+          "size": "2G",
+          "mountpoints": ["[SWAP]"],
+          "pkname": "sdb"
+        }
+      ]
+    }
+  ]
+}

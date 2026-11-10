@@ -1,0 +1,39 @@
+{
+  "blockdevices": [
+    {
+      "name": "sdx",
+      "kname": "sdx",
+      "path": "/dev/sdx",
+      "type": "disk",
+      "rm": true,
+      "ro": false,
+      "size": "29.7G",
+      "mountpoints": [null],
+      "pkname": null,
+      "children": [
+        {
+          "name": "sdx1",
+          "kname": "sdx1",
+          "path": "/dev/sdx1",
+          "type": "part",
+          "rm": true,
+          "ro": false,
+          "size": "260M",
+          "mountpoints": [null],
+          "pkname": "sdx"
+        },
+        {
+          "name": "sdx2",
+          "kname": "sdx2",
+          "path": "/dev/sdx2",
+          "type": "part",
+          "rm": true,
+          "ro": false,
+          "size": "29.4G",
+          "mountpoints": [null],
+          "pkname": "sdx"
+        }
+      ]
+    }
+  ]
+}

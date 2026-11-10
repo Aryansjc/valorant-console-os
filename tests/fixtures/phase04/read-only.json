@@ -1,0 +1,15 @@
+{
+  "blockdevices": [
+    {
+      "name": "sdc",
+      "kname": "sdc",
+      "path": "/dev/sdc",
+      "type": "disk",
+      "rm": true,
+      "ro": true,
+      "size": "29.7G",
+      "mountpoints": [null],
+      "pkname": null
+    }
+  ]
+}

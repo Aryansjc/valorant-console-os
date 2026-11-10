@@ -1,0 +1,28 @@
+{
+  "blockdevices": [
+    {
+      "name": "nvme0n1",
+      "kname": "nvme0n1",
+      "path": "/dev/nvme0n1",
+      "type": "disk",
+      "rm": false,
+      "ro": false,
+      "size": "953.9G",
+      "mountpoints": [null],
+      "pkname": null,
+      "children": [
+        {
+          "name": "nvme0n1p1",
+          "kname": "nvme0n1p1",
+          "path": "/dev/nvme0n1p1",
+          "type": "part",
+          "rm": false,
+          "ro": false,
+          "size": "512M",
+          "mountpoints": ["/boot/efi"],
+          "pkname": "nvme0n1"
+        }
+      ]
+    }
+  ]
+}

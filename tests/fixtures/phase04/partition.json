@@ -1,0 +1,15 @@
+{
+  "blockdevices": [
+    {
+      "name": "sdd1",
+      "kname": "sdd1",
+      "path": "/dev/sdd1",
+      "type": "part",
+      "rm": true,
+      "ro": false,
+      "size": "29.7G",
+      "mountpoints": [null],
+      "pkname": "sdd"
+    }
+  ]
+}

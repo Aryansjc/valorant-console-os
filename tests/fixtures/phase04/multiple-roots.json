@@ -1,0 +1,26 @@
+{
+  "blockdevices": [
+    {
+      "name": "sda",
+      "kname": "sda",
+      "path": "/dev/sda",
+      "type": "disk",
+      "rm": true,
+      "ro": false,
+      "size": "29.7G",
+      "mountpoints": [null],
+      "pkname": null
+    },
+    {
+      "name": "sdb",
+      "kname": "sdb",
+      "path": "/dev/sdb",
+      "type": "disk",
+      "rm": true,
+      "ro": false,
+      "size": "29.7G",
+      "mountpoints": [null],
+      "pkname": null
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "blockdevices": [
+    {
+      "name": "loop0",
+      "kname": "loop0",
+      "path": "/dev/loop0",
+      "type": "loop",
+      "rm": false,
+      "ro": false,
+      "size": "25G",
+      "mountpoints": [null],
+      "pkname": null
+    }
+  ]
+}

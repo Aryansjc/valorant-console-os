@@ -13,7 +13,7 @@ a UEFI/GPT Windows To Go microSD system with a Valorant-only console shell.
 | 1 | ISO extraction, LTSC WIM slim/optimize, KB5015684 staging, Vanguard audit | 23/23 passing |
 | 2 | unattend/OOBE, kiosk shell, microSD survival tweaks, WIM injection | 57/57 passing |
 | 3 | GPT/UEFI deploy engine, offline boot fixes, OVMF + TPM 2.0 VM smoke test | 17/17 passing |
-| 4 | microSD write and read-back verify | planned |
+| 4 | microSD write and read-back verify | 32/32 passing |
 | 5 | Bare-metal boot and Vanguard attestation | planned |
 
 ## Safety
@@ -23,6 +23,10 @@ a UEFI/GPT Windows To Go microSD system with a Valorant-only console shell.
 - Phase 3 writes only to a loop device backed by `vm-test/test_sdcard.img` during
   the VM gate. The deploy engine rejects NVMe disks, host-mounted devices, swap,
   read-only devices, partitions, and non-removable disks.
+- Phase 4 accepts only a whole removable disk (`RM=1`) or a loop device backed
+  by a file under `build/` or `vm-test/`. The gate proves the validator rejects
+  NVMe, host/root-mounted, swap, read-only, partition, stacked, and
+  non-removable targets before the disposable loop image is written.
 - `build/` (WIM, extracted ISO, logs, manifests, staged EFI) and `vm-test/` (QEMU
   images, OVMF variables, TPM state) are disposable and git-ignored.
 - Source media (`*.iso`) is git-ignored and must never be committed.
@@ -37,6 +41,8 @@ a UEFI/GPT Windows To Go microSD system with a Valorant-only console shell.
 - Phase 1 audit also expects `chntpw`, `parted`, `dosfstools`, `ntfs-3g`
 - Phase 3 gate also expects `qemu-system-x86`, `swtpm`, `socat`, `edk2-ovmf`,
   `libvirt`-free KVM access (`/dev/kvm`)
+- Phase 4 gate also expects `reged` (from `chntpw`), `ntfs-3g`, `losetup`,
+  `blockdev`, and `python3`
 
 ```bash
 sudo pacman -S --needed wimlib 7zip dos2unix libxml2 python curl \
@@ -66,6 +72,26 @@ bash ./scripts/03_deploy_wtg.sh --target /dev/sdX
 sudo bash ./scripts/03_deploy_wtg.sh --target /dev/sdX --commit
 ```
 
+Phase 4 wraps the deploy engine with an independent post-write read-back:
+
+```bash
+# Validation only (default)
+bash ./scripts/04_write_sdcard.sh --target /dev/sdX
+
+# Destructive write plus read-back of GPT, ESP, NTFS, payloads, and SYSTEM
+sudo bash ./scripts/04_write_sdcard.sh --target /dev/sdX --commit
+
+# Non-interactive commit (microSD production run)
+sudo bash ./scripts/04_write_sdcard.sh --target /dev/sdX --commit --yes --full-read
+
+# Read-back only, without writing (works on a card that already booted)
+sudo bash ./scripts/04_write_sdcard.sh --target /dev/sdX --verify-only
+```
+
+`--full-read` reads the whole target twice and requires matching SHA-256
+digests. Commit and read-back runs write a manifest to
+`build/logs/04_manifest_*.env`.
+
 ## Verify
 
 ```bash
@@ -75,6 +101,11 @@ bash ./tests/test_02_payloads.sh  # Phase 2 gate
 # Phase 3 gate: 25 GiB sparse image, loop deploy, OVMF + TPM 2.0 boot,
 # then read-only verification. Needs root for loop devices and mounts.
 pkexec bash ./tests/test_03_qemu_boot.sh
+
+# Phase 4 gate: lsblk safety fixtures, CLI/confirmation guards, a fresh
+# 25 GiB loop deploy, independent GPT/ESP/NTFS/SYSTEM read-back, manifest,
+# and --verify-only against a first-boot-rewritten answer file.
+pkexec bash ./tests/test_04_sdcard.sh
 ```
 
 Logs are written to `build/logs/`. The generated image is

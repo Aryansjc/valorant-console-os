@@ -1,0 +1,15 @@
+{
+  "blockdevices": [
+    {
+      "name": "sde",
+      "kname": "sde",
+      "path": "/dev/sde",
+      "type": "disk",
+      "rm": false,
+      "ro": false,
+      "size": "931.5G",
+      "mountpoints": [null],
+      "pkname": null
+    }
+  ]
+}

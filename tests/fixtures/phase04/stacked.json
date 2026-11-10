@@ -1,0 +1,28 @@
+{
+  "blockdevices": [
+    {
+      "name": "sdf",
+      "kname": "sdf",
+      "path": "/dev/sdf",
+      "type": "disk",
+      "rm": true,
+      "ro": false,
+      "size": "29.7G",
+      "mountpoints": [null],
+      "pkname": null,
+      "children": [
+        {
+          "name": "dm-0",
+          "kname": "dm-0",
+          "path": "/dev/dm-0",
+          "type": "lvm",
+          "rm": false,
+          "ro": false,
+          "size": "29.4G",
+          "mountpoints": [null],
+          "pkname": "sdf"
+        }
+      ]
+    }
+  ]
+}

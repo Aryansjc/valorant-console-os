@@ -1,0 +1,15 @@
+{
+  "blockdevices": [
+    {
+      "name": "nvme0n1p2",
+      "kname": "nvme0n1p2",
+      "path": "/dev/nvme0n1p2",
+      "type": "part",
+      "rm": false,
+      "ro": false,
+      "size": "953.4G",
+      "mountpoints": [null],
+      "pkname": "nvme0n1"
+    }
+  ]
+}
