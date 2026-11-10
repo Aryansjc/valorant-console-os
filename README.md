@@ -115,8 +115,11 @@ side only reads the card; the Windows collector writes the evidence.
    ```
 
 2. Boot the card on the target PC with UEFI, Secure Boot, and TPM 2.0 enabled.
-   From the console menu choose the full Windows desktop, open
-   `C:\Riot Games`, and run `phase5_attest.cmd` as administrator.
+   From the console menu choose the full Windows desktop, install Riot Vanguard
+   as the last installation step, and let Windows Update/Defender refresh
+   signatures. Then open `C:\Riot Games` and run `phase5_attest.cmd` as
+   administrator. The gate requires `vgk.sys`/`vgc` running and Defender
+   signatures no older than 30 days.
 
 3. Return the card to the Linux host and validate the report:
 
